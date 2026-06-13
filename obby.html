@@ -16,6 +16,10 @@ canvas{width:100%;border:1px solid #2a3650;border-radius:12px;background:#161c2c
 button{background:#26304a;border:1px solid #3a4a70;color:#eef1f8;border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit}
 .ad{background:#1a2030;border:1px dashed #2a3650;border-radius:10px;padding:24px;text-align:center;color:#5c6680;font-size:.8rem;margin:14px 0}
 .muted{font-size:.8rem;color:#8d96ad;margin-top:6px}
+.pad{display:flex;gap:12px;justify-content:center;align-items:center;margin:16px 0;touch-action:none;-webkit-user-select:none;user-select:none}
+.pad button{width:86px;height:70px;font-size:1.7rem;border-radius:16px;background:#26304a;border:1px solid #3a4a70;color:#eef1f8}
+.pad button:active{background:#5b8cff;transform:scale(.96)}
+.pad .jump{width:130px;height:70px;background:#3a4a70;font-size:1.05rem;font-weight:600}
 </style>
 </head>
 <body>
@@ -31,7 +35,12 @@ button{background:#26304a;border:1px solid #3a4a70;color:#eef1f8;border-radius:8
   <button id="rst" style="margin-left:auto">↺ restart</button>
 </div>
 <canvas id="c" width="660" height="380"></canvas>
-<div class="muted">← → / A D move · ↑ / W / space jump · R resets stage</div>
+<div class="muted">← → / A D move · ↑ / W / space jump · R resets stage · or use the buttons below</div>
+<div class="pad">
+  <button id="bL" aria-label="move left">◀</button>
+  <button id="bJ" class="jump" aria-label="jump">⬆ JUMP</button>
+  <button id="bR" aria-label="move right">▶</button>
+</div>
 <div class="ad">AD SLOT — paste ad network code here</div>
 </div>
 <script>
@@ -89,6 +98,20 @@ function draw(){
   const [gx,gy,gw,gh]=s.goal;x.fillStyle='#efb627';x.fillRect(gx+gw/2-2,gy,4,gh);x.beginPath();x.moveTo(gx+gw/2+2,gy);x.lineTo(gx+gw,gy+8);x.lineTo(gx+gw/2+2,gy+16);x.fill();
   x.fillStyle='#5b8cff';x.fillRect(P.x,P.y,P.w,P.h);
 }
+// on-screen touch controls (iPad / phones)
+function hold(el,k){
+  const on=e=>{e.preventDefault();key[k]=1;if(t0===null&&!won)t0=performance.now();};
+  const off=e=>{e.preventDefault();key[k]=0;};
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on);
+  el.addEventListener('mouseup',off);
+  el.addEventListener('mouseleave',off);
+}
+hold($('bL'),'arrowleft');
+hold($('bR'),'arrowright');
+hold($('bJ'),'arrowup');
 load();
 (function loop(){step();draw();requestAnimationFrame(loop);})();
 </script>
