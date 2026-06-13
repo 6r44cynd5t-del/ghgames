@@ -33,6 +33,14 @@ input{background:#10141f;border:1px solid #2a3650;color:#eef1f8;border-radius:8p
 .ad{background:#1a2030;border:1px dashed #2a3650;border-radius:10px;padding:24px;text-align:center;color:#5c6680;font-size:.8rem;margin:14px 0}
 .bar{height:6px;background:#26304a;border-radius:3px;margin-top:8px;overflow:hidden}
 .bar i{display:block;height:100%;background:#5b8cff}
+.mv{border-color:#6b46c1!important;background:linear-gradient(160deg,#1d1536,#1a2030)}
+.mvup{background:#1d1536;border:1px solid #4b2e83;border-radius:10px;padding:10px;color:#eef1f8;cursor:pointer;text-align:left;font-family:inherit}
+.mvup:hover:not(:disabled){border-color:#a974ff}
+.mvup:disabled{opacity:.45;cursor:default}
+.mvup b{font-size:.85rem}
+.mvup small{display:block;color:#b9a6e0;font-size:.72rem;margin-top:2px}
+#enter{background:#6b46c1;border-color:#8a5cf6;width:100%;margin-top:8px;font-weight:600}
+#enter:disabled{opacity:.4;cursor:default}
 </style>
 </head>
 <body>
@@ -67,6 +75,15 @@ input{background:#10141f;border:1px solid #2a3650;color:#eef1f8;border-radius:8p
   <div>
     <div class="ad">AD SLOT — paste ad network code here</div>
     <div class="ups" id="ups"></div>
+    <div class="panel mv" id="mvpanel" style="margin-top:12px;text-align:left">
+      <div style="font-weight:700;font-size:1.05rem">🌌 Multiverse</div>
+      <div class="muted" style="margin-top:8px">✨ Multiversal Essence</div>
+      <div class="big" id="ess" style="font-size:1.5rem">0</div>
+      <div class="muted" id="essnext" style="margin-bottom:4px"></div>
+      <button class="btn" id="enter">Enter the Multiverse</button>
+      <div class="muted" style="margin-top:14px">🛸 Multiversal Upgrades — spend Essence on permanent power-ups</div>
+      <div class="ups" id="mvups" style="margin-top:6px"></div>
+    </div>
   </div>
 </div>
 <div style="text-align:center;margin-top:10px"><button class="btn" id="post">🏆 Post my score to the leaderboard</button></div>
@@ -96,14 +113,26 @@ const UP=[
 const EXTRA=['Nebula nursery 🌌','Comet chopper ☄️','Star sawyer ⭐','Moon mill 🌙','Solar splitter ☀️','Asteroid arborist 🪨','Rocket loggers 🚀','Wormhole woodyard 🕳️','Dyson saw-sphere 🔆','Quantum quarry ⚛️','Antimatter axe 💥','Dark forest 🌑','Plasma pines 🔥','Crystal canopy 💎','Void violets 🟣','Gravity grove 🧲','Photon foresters 💡','Tachyon timber ⚡','Nano lumberbots 🦠','DNA dendrology 🧬','Cyber cedars 🖥️','Hologram hardwood 📽️','Dream druids 😴','Mythic maples 🦄','Dragon deforesters 🐉','Phoenix forests 🐦','Titan timberland 🗿','Celestial cedar 👼','Cosmic carpenter 🔨','Reality redwoods 🌳','Dimension drills 🌀','Multiverse mill 🎆','Eternity evergreens 🌠','Omega oak 🏆'];
 EXTRA.forEach((s,i)=>{const p=s.split(' '),e=p.pop();UP.push({n:p.join(' '),e,base:Math.round(25e8*Math.pow(3.75,i+1)),add:Math.round(16e7*Math.pow(3.9,i+1))});});
 const ACH=[10,100,1000,10000,1e5,1e6,1e7,1e8,1e9,1e10,1e12,1e14,1e16,1e18,1e20,1e22,1e24,1e26,1e28,1e30];
+const NON=1e30; // 1 nonillion wood = 1 Multiversal Essence
+const MULT_UP=[
+ {n:'Multiversal Surge',e:'🌌',t:'mult', val:3,   cost:1, growth:3, d:'×3 wood from everything'},
+ {n:'Quantum Bite',     e:'⚛️',t:'mult', val:2,   cost:1, growth:2, d:'×2 wood from everything'},
+ {n:'Head Start',       e:'🚀',t:'start',val:6,   cost:2, growth:4, d:'start each reset with a huge wood stash'},
+ {n:'Essence Attunement',e:'🔮',t:'ess', val:0.5, cost:5, growth:4, d:'+50% Essence from every reset'}
+];
 const KEY='logclicker_save';
 let S=null;
 const $=id=>document.getElementById(id);
 const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
 function f(n){n=Math.round(n);if(n<1e6)return n.toLocaleString();const e=Math.min(SUF.length-1,Math.floor(Math.log10(n)/3));const v=n/Math.pow(10,e*3);return(v>=100?Math.round(v):v.toFixed(1))+SUF[e];}
 const cost=u=>Math.round(UP[u].base*Math.pow(1.5,S.owned[u]));
-const per=()=>1+S.owned.reduce((s,c,i)=>s+c*UP[i].add,0);
-function fresh(u){return{user:u,wood:0,total:0,clicks:0,owned:UP.map(()=>0),ach:0,streak:1,lastDay:today(),lastSeen:Date.now()}}
+const essMult=()=>MULT_UP.reduce((m,u,i)=>u.t==='mult'?m*Math.pow(u.val,S.mult[i]):m,1);
+const per=()=>(1+S.owned.reduce((s,c,i)=>s+c*UP[i].add,0))*essMult();
+const essBonus=()=>MULT_UP.reduce((b,u,i)=>u.t==='ess'?b+u.val*S.mult[i]:b,1);
+const essGain=()=>Math.floor(S.wood/NON*essBonus()+1e-9);
+const startWood=()=>{let w=0;MULT_UP.forEach((u,i)=>{if(u.t==='start'&&S.mult[i]>0)w=Math.pow(10,u.val*S.mult[i]);});return w;};
+const mcost=i=>Math.ceil(MULT_UP[i].cost*Math.pow(MULT_UP[i].growth,S.mult[i]));
+function fresh(u){return{user:u,wood:0,total:0,clicks:0,owned:UP.map(()=>0),ach:0,streak:1,lastDay:today(),lastSeen:Date.now(),ess:0,mult:MULT_UP.map(()=>0)}}
 function today(){return new Date().toDateString()}
 function save(){S.lastSeen=Date.now();localStorage.setItem(KEY,JSON.stringify(S))}
 function toast(t){const e=$('toast');e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,2600)}
@@ -116,6 +145,19 @@ function render(){
     const u=+b.dataset.u,c=cost(u);
     b.disabled=S.wood<c;
     b.innerHTML=`<b>${UP[u].e} ${UP[u].n} ×${S.owned[u]}</b><small>+${f(UP[u].add)}/click · costs ${f(c)}</small>`;
+  });
+  // --- Multiverse ---
+  $('ess').textContent=f(S.ess);
+  const g=essGain();
+  $('essnext').innerHTML = g>=1
+    ? 'Ready! Enter now for <b style="color:#c9a6ff">+'+f(g)+'</b> Essence ✨'
+    : f((essGain()+1)*NON/essBonus()-S.wood)+' more wood for your next Essence';
+  $('enter').textContent = g>=1 ? 'Enter the Multiverse  (+'+f(g)+' ✨)' : 'Enter the Multiverse';
+  $('enter').disabled = g<1;
+  document.querySelectorAll('.mvup').forEach(b=>{
+    const i=+b.dataset.m,c=mcost(i);
+    b.disabled=S.ess<c;
+    b.innerHTML=`<b>${MULT_UP[i].e} ${MULT_UP[i].n} ×${S.mult[i]}</b><small>${MULT_UP[i].d} · costs ${f(c)} ✨</small>`;
   });
 }
 function checkAch(){while(S.ach<ACH.length&&S.total>=ACH[S.ach]){S.ach++;toast('🏆 Achievement! '+f(ACH[S.ach-1])+' all-time wood');}}
@@ -142,17 +184,33 @@ function spawnGolden(){
   document.body.appendChild(b);setTimeout(()=>b.remove(),6000);
 }
 $('ups').innerHTML=UP.map((u,i)=>`<button class="up" data-u="${i}"></button>`).join('');
+$('mvups').innerHTML=MULT_UP.map((u,i)=>`<button class="mvup" data-m="${i}"></button>`).join('');
 document.addEventListener('click',e=>{
   const b=e.target.closest('.up');if(!b)return;
   const u=+b.dataset.u,c=cost(u);
   if(S.wood>=c){S.wood-=c;S.owned[u]++;toast(UP[u].e+' Bought '+UP[u].n+'!');render();save();}
 });
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.mvup');if(!b)return;
+  const i=+b.dataset.m,c=mcost(i);
+  if(S.ess>=c){S.ess-=c;S.mult[i]++;toast(MULT_UP[i].e+' '+MULT_UP[i].n+' upgraded!');render();save();}
+});
+$('enter').onclick=()=>{
+  const g=essGain();
+  if(g<1){toast('Reach 1 nonillion wood first!');return;}
+  if(!confirm('Enter the Multiverse?\n\nThis resets your wood and upgrades — but you gain '+f(g)+' Multiversal Essence, kept forever, plus everything you bought with Essence.')) return;
+  S.ess+=g;
+  S.owned=UP.map(()=>0);
+  S.wood=startWood();
+  toast('🌌 You entered the Multiverse! +'+f(g)+' Essence');
+  render();save();
+};
 $('log').onclick=e=>{const p=per();S.wood+=p;S.total+=p;S.clicks++;floatNum(e,'+'+f(p));checkAch();render();};
 $('setname').onclick=()=>{const v=$('uname').value.trim();if(!v)return;S=fresh(v);save();start();};
 $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('setname').click()});
 $('newg').onclick=()=>{if(confirm('Wipe ALL progress?')){localStorage.removeItem(KEY);location.reload();}};
 const saved=localStorage.getItem(KEY);
-if(saved){try{S=JSON.parse(saved);while(S.owned.length<UP.length)S.owned.push(0);start();}catch(e){localStorage.removeItem(KEY);}}
+if(saved){try{S=JSON.parse(saved);while(S.owned.length<UP.length)S.owned.push(0);if(typeof S.ess!=='number')S.ess=0;if(!Array.isArray(S.mult))S.mult=MULT_UP.map(()=>0);while(S.mult.length<MULT_UP.length)S.mult.push(0);start();}catch(e){localStorage.removeItem(KEY);}}
 if(window.Leaderboard){
   Leaderboard.mount({el:'lb',game:'log-clicker',dir:'desc',unit:'wood',title:'Log Clicker — all-time wood'});
   $('post').onclick=()=>{
