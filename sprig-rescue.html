@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprig Rescue — GH Games</title>
+<style>
+  /* ---- Sprig Rescue : an original Lemmings-inspired puzzle game ----
+     All code, art (drawn procedurally on canvas), sounds (WebAudio) and
+     level layouts are original. No third-party assets. */
+  :root{ --ink:#eaf2ff; --soft:#9fb0d0; --panel:#161d33; --line:#2a3a5e; --accent:#6cff9e; --warn:#ff6b81; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:system-ui,sans-serif;background:#0a0e1c;color:var(--ink);
+       -webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;min-height:100%}
+  a.back{position:fixed;top:10px;left:10px;color:#cfe0ff;text-decoration:none;background:rgba(255,255,255,.1);
+         padding:7px 12px;border-radius:12px;font-weight:700;font-size:13px;z-index:30}
+  #app{width:100%;max-width:980px;padding:8px 8px 24px}
+  .wrap{position:relative;width:100%;max-width:960px;margin:0 auto}
+  canvas{display:block;width:100%;height:auto;background:#0c1226;border:1px solid var(--line);border-radius:10px;image-rendering:pixelated}
+  /* screens overlay the canvas area */
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+          background:rgba(8,12,26,.92);border-radius:10px;padding:18px;text-align:center;gap:12px;z-index:20}
+  .hidden{display:none!important}
+  h1{font-size:clamp(30px,7vw,52px);letter-spacing:1px;
+     background:linear-gradient(90deg,#6cff9e,#46e6ff,#ffd24a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{font-size:22px;margin-bottom:4px}
+  p.tag{color:var(--soft);max-width:520px}
+  button{font-family:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#222c4a;color:var(--ink);
+         padding:10px 16px;font-weight:700;font-size:15px}
+  button:hover{border-color:#6cff9e}
+  button.primary{background:linear-gradient(100deg,#1f9d57,#2bb36b);border-color:#39d27f}
+  .menu-btns{display:flex;flex-direction:column;gap:10px;width:240px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;width:100%;max-width:640px}
+  .lvlcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:left;cursor:pointer}
+  .lvlcard.locked{opacity:.4;cursor:not-allowed}
+  .lvlcard b{display:block;font-size:14px}
+  .lvlcard small{color:var(--soft);font-size:11px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+  label.set{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:14px}
+  input[type=range]{accent-color:#6cff9e}
+  /* HUD */
+  #hud{display:none;width:100%;max-width:960px;margin:6px auto 0}
+  #stats{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;font-size:13px;color:var(--soft);margin-bottom:6px}
+  #stats b{color:var(--ink)}
+  #toolbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+  .tool{position:relative;width:64px;padding:6px 2px;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+        font-size:11px;font-weight:700;text-align:center;line-height:1.2}
+  .tool .ic{font-size:20px;display:block}
+  .tool .ct{display:block;color:#ffd24a;font-size:12px}
+  .tool.sel{border-color:#6cff9e;background:#1d3a2b}
+  .tool.empty{opacity:.4}
+  .tool.ctrl{width:54px;color:#cfe0ff}
+  #msg{position:absolute;left:0;right:0;bottom:8px;text-align:center;color:#ffd24a;font-weight:700;text-shadow:0 1px 3px #000;pointer-events:none}
+  .credit{color:#5c6680;font-size:11px;margin-top:10px;text-align:center}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← arcade</a>
+<div id="app">
+  <div class="wrap">
+    <canvas id="game" width="960" height="540"></canvas>
+
+    <!-- MAIN MENU -->
+    <div id="scr-menu" class="screen">
+      <h1>SPRIG RESCUE</h1>
+      <p class="tag">Little sprigs march out and won't stop. Hand out abilities to carve a path and guide enough of them safely to the exit!</p>
+      <div class="menu-btns">
+        <button class="primary" data-go="select">▶ Play</button>
+        <button data-go="sandbox">🧪 Sandbox</button>
+        <button data-go="settings">⚙ Settings</button>
+        <button id="lbBtn">🏆 Leaderboard</button>
+      </div>
+      <div class="credit">Original game · part of GH Games</div>
+    </div>
+
+    <!-- LEVEL SELECT -->
+    <div id="scr-select" class="screen hidden">
+      <h2>Choose a level</h2>
+      <div class="grid" id="lvlgrid"></div>
+      <button data-go="menu">← Menu</button>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="scr-settings" class="screen hidden">
+      <h2>Settings</h2>
+      <label class="set">Music <input type="range" id="volMusic" min="0" max="100"></label>
+      <label class="set">Sound <input type="range" id="volSfx" min="0" max="100"></label>
+      <label class="set"><input type="checkbox" id="muteBox"> Mute everything</label>
+      <button data-go="menu">← Menu</button>
+    </div>
+
+    <!-- WIN / LOSE -->
+    <div id="scr-end" class="screen hidden">
+      <h2 id="endTitle"></h2>
+      <p class="tag" id="endText"></p>
+      <div class="row">
+        <button class="primary" id="endNext">Next ▶</button>
+        <button id="endRetry">↺ Retry</button>
+        <button data-go="select">Levels</button>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD -->
+    <div id="scr-lb" class="screen hidden" style="background:rgba(8,12,26,.97)">
+      <div id="lb" style="width:100%;max-width:360px"></div>
+      <button data-go="menu">← Menu</button>
+    </div>
+
+    <div id="msg"></div>
+  </div>
+
+  <!-- IN-GAME HUD -->
+  <div id="hud">
+    <div id="stats"></div>
+    <div id="toolbar"></div>
+  </div>
+</div>
+
+<script src="leaderboard.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   SPRIG RESCUE  —  original Lemmings-inspired puzzle game
+   ------------------------------------------------------------
+   Architecture:
+     * Terrain is a destructible pixel bitmap.  `mask` (Uint8Array)
+       stores collision (1=solid); a coloured offscreen canvas
+       (`tcan`) stores how it looks.  Abilities edit both.
+     * Each sprig is a tiny state machine (walk/fall/climb/float/
+       build/bash/mine/dig/block/bomb).  Collision is O(1) mask reads
+       so we comfortably handle 100+ sprigs.
+     * step(dt) advances the simulation; draw() renders. The two are
+       separate so the sim is testable/headless.
+   ============================================================ */
+
+const W = 960, H = 540;            // internal resolution (pixels)
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// ---- tunable physics constants ----
+const BH = 9;            // sprig body height (pixels)
+const STEP_UP = 5;       // auto-climb small steps up to this height
+const STEP_DOWN = 4;     // step down small drops without falling
+const FALL_STEP = 3;     // normal fall speed (px/tick)
+const FLOAT_STEP = 1;    // floater fall speed
+const MAX_FALL = 84;     // fatal fall distance (unless floater)
+const CLIMB_STEP = 1;    // climb speed
+const BOMB_FUSE = 5;     // seconds
+const BUILD_BRICKS = 12; // builder steps
+const TERRAIN_COL = '#3c6a4a', TERRAIN_EDGE = '#54916a', BRICK_COL = '#c98a4b';
+
+// terrain bitmap (colour) + collision mask
+const tcan = document.createElement('canvas'); tcan.width = W; tcan.height = H;
+const tctx = tcan.getContext('2d');
+let mask = new Uint8Array(W * H);
+
+const idx = (x, y) => y * W + x;
+function solid(x, y){
+  x |= 0; y |= 0;
+  if (x < 0 || x >= W) return true;     // side walls -> sprigs turn around
+  if (y < 0) return false;
+  if (y >= H) return false;             // bottom is open (fall out = death)
+  return mask[idx(x, y)] === 1;
+}
+function clearPx(x, y){ x|=0; y|=0; if(x<0||x>=W||y<0||y>=H) return; mask[idx(x,y)]=0; tctx.clearRect(x,y,1,1); }
+function setPx(x, y, col){ x|=0; y|=0; if(x<0||x>=W||y<0||y>=H) return; mask[idx(x,y)]=1; tctx.fillStyle=col; tctx.fillRect(x,y,1,1); }
+function clearRect(x,y,w,h){ for(let j=0;j<h;j++) for(let i=0;i<w;i++) clearPx(x+i,y+j); }
+function clearCircle(cx,cy,r){ for(let j=-r;j<=r;j++) for(let i=-r;i<=r;i++) if(i*i+j*j<=r*r) clearPx(cx+i,cy+j); }
+function fillRectSolid(x,y,w,h,col){ for(let j=0;j<h;j++) for(let i=0;i<w;i++) setPx(x+i,y+j,col||BRICK_COL); }
+
+/* ---------- AUDIO : tiny original WebAudio engine ---------- */
+const Audio2 = (function(){
+  let ac=null, master=null, musicGain=null, sfxGain=null, musicTimer=null;
+  const st = { music:0.4, sfx:0.6, mute:false };
+  function init(){
+    if(ac) return;
+    ac = new (window.AudioContext||window.webkitAudioContext)();
+    master = ac.createGain(); master.connect(ac.destination);
+    musicGain = ac.createGain(); musicGain.connect(master);
+    sfxGain = ac.createGain(); sfxGain.connect(master);
+    apply();
+  }
+  function apply(){ if(!ac) return;
+    master.gain.value = st.mute?0:1;
+    musicGain.gain.value = st.music; sfxGain.gain.value = st.sfx; }
+  function blip(freq, dur, type, gain){
+    if(!ac||st.mute) return;
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type=type||'square'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime((gain||0.5),ac.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);
+    o.connect(g); g.connect(sfxGain); o.start(); o.stop(ac.currentTime+dur+0.02);
+  }
+  const sfx = {
+    assign:()=>blip(660,0.08,'square'),
+    build:()=>blip(880,0.05,'square',0.3),
+    dig:()=>blip(160,0.06,'sawtooth',0.3),
+    explode:()=>{blip(80,0.3,'sawtooth',0.6); blip(120,0.25,'square',0.4);},
+    splat:()=>blip(110,0.12,'sawtooth',0.4),
+    save:()=>blip(990,0.12,'triangle',0.5),
+    win:()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>blip(f,0.18,'triangle',0.5),i*120));},
+    lose:()=>{[400,300,200].forEach((f,i)=>setTimeout(()=>blip(f,0.2,'sawtooth',0.4),i*150));},
+    click:()=>blip(520,0.05,'square',0.3)
+  };
+  // simple original looping melody (pentatonic)
+  const SONG=[392,440,523,440,392,330,392,523,587,523,440,392];
+  let mi=0;
+  function startMusic(){
+    if(!ac||musicTimer||st.mute) return;
+    musicTimer=setInterval(()=>{
+      if(st.mute) return;
+      const f=SONG[mi%SONG.length]; mi++;
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,ac.currentTime);
+      g.gain.linearRampToValueAtTime(0.18,ac.currentTime+0.04);
+      g.gain.linearRampToValueAtTime(0.0001,ac.currentTime+0.32);
+      o.connect(g); g.connect(musicGain); o.start(); o.stop(ac.currentTime+0.36);
+    },340);
+  }
+  function stopMusic(){ if(musicTimer){clearInterval(musicTimer); musicTimer=null;} }
+  return { init, apply, sfx, startMusic, stopMusic, state:st };
+})();
+
+/* ---------- LEVELS (all original layouts) ----------
+   build(t) paints terrain on the terrain context `t`.
+   helper g() draws a solid block with a lighter top edge. */
+function block(t,x,y,w,h){ t.fillStyle=TERRAIN_COL; t.fillRect(x,y,w,h); t.fillStyle=TERRAIN_EDGE; t.fillRect(x,Math.max(0,y),w,3); }
+
+const ABIL = ['climber','floater','bomber','blocker','builder','basher','miner','digger'];
+const ICON = {climber:'🧗',floater:'🪂',bomber:'💥',blocker:'🛑',builder:'🧱',basher:'⬅️',miner:'⛏️',digger:'🔽'};
+
+const LEVELS = [
+  // Each level is designed so the entrance drop is survivable (<MAX_FALL) and the
+  // intended solution carves a SHARED path (digging/bashing) the whole crowd can use.
+  { name:'1 · First Steps', tip:'They walk by themselves — just let them reach the EXIT!',
+    build(t){ block(t,0,460,960,80); },
+    entrance:{x:90,y:400}, exit:{x:840,y:420,w:60,h:40}, spawnDir:1,
+    hazards:[], spawn:10, need:50, time:120, rate:55,
+    abilities:{builder:4,blocker:3} },
+
+  { name:'2 · Dig Down', tip:'They are trapped up top. Give one a DIGGER to tunnel down — the rest follow!',
+    build(t){ block(t,0,300,960,40); block(t,0,410,960,130); },
+    entrance:{x:90,y:250}, exit:{x:840,y:370,w:60,h:40}, spawnDir:1,
+    hazards:[], spawn:12, need:60, time:130, rate:50,
+    abilities:{digger:3,builder:4,blocker:3,floater:4} },
+
+  { name:'3 · The Wall', tip:'A wall blocks the way. A BASHER tunnels through for everyone — or CLIMB over.',
+    build(t){ block(t,0,470,960,70); block(t,460,400,40,70); },
+    entrance:{x:80,y:410}, exit:{x:840,y:430,w:60,h:40}, spawnDir:1,
+    hazards:[{type:'water',x:500,y:516,w:0,h:0}],
+    spawn:12, need:60, time:140, rate:50,
+    abilities:{basher:3,climber:6,floater:4,builder:4,blocker:3} },
+
+  { name:'4 · Break Through', tip:'Thick rock ahead. A BASHER cuts a tunnel the crowd can walk through.',
+    build(t){ block(t,0,470,960,70); block(t,440,250,120,220); },
+    entrance:{x:80,y:410}, exit:{x:840,y:430,w:60,h:40}, spawnDir:1,
+    hazards:[{type:'lava',x:300,y:560,w:0,h:0}],
+    spawn:16, need:60, time:160, rate:46,
+    abilities:{basher:4,miner:4,builder:5,blocker:3,climber:4,floater:4} },
+
+  { name:'5 · The Gauntlet', tip:'Save 70%! A short wall then a thick one. Bash, climb, build — all tools unlocked.',
+    build(t){ block(t,0,470,960,70); block(t,300,400,40,70); block(t,620,300,90,170); },
+    entrance:{x:70,y:410}, exit:{x:840,y:430,w:60,h:40}, spawnDir:1,
+    hazards:[], spawn:20, need:70, time:200, rate:42,
+    abilities:{climber:8,floater:8,bomber:4,blocker:5,builder:6,basher:6,miner:5,digger:5} }
+];
+
+/* ---------- GAME STATE ---------- */
+const G = {
+  screen:'menu', level:0, sandbox:false,
+  sprigs:[], parts:[], blockers:0,
+  spawned:0, saved:0, dead:0, target:0, total:0,
+  time:0, frame:0, paused:false, speed:1, running:false,
+  abilities:{}, selected:null, hazards:[], entrance:null, exit:null, spawnDir:1,
+  spawnRate:50, spawnTimer:0, animClock:0, result:null
+};
+
+const SAVE_KEY='sprig_save';
+function loadSave(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY))||{}; }catch(e){ return {}; } }
+function writeSave(s){ localStorage.setItem(SAVE_KEY, JSON.stringify(s)); }
+let save = loadSave();
+if(save.unlocked==null) save.unlocked = 1;
+if(!save.best) save.best = {};
+if(!save.settings) save.settings = {music:40,sfx:60,mute:false};
+Audio2.state.music = save.settings.music/100; Audio2.state.sfx = save.settings.sfx/100; Audio2.state.mute = save.settings.mute;
+
+/* ---------- LEVEL SETUP ---------- */
+function buildTerrain(def){
+  tctx.clearRect(0,0,W,H);
+  def.build(tctx);
+  // derive collision mask from painted alpha
+  const img = tctx.getImageData(0,0,W,H).data;
+  for(let i=0;i<W*H;i++) mask[i] = img[i*4+3] > 128 ? 1 : 0;
+}
+
+function startLevel(n, sandbox){
+  G.sandbox = !!sandbox;
+  const def = sandbox ? sandboxDef() : LEVELS[n];
+  G.level = n;
+  buildTerrain(def);
+  G.sprigs=[]; G.parts=[]; G.blockers=0;
+  G.spawned=0; G.saved=0; G.dead=0; G.total=def.spawn; G.target=def.need;
+  G.time=def.time; G.frame=0; G.spawnTimer=0; G.spawnRate=def.rate;
+  G.entrance=def.entrance; G.exit=def.exit; G.hazards=def.hazards||[]; G.spawnDir=def.spawnDir;
+  G.abilities=Object.assign({}, def.abilities);
+  G.selected=null; G.paused=false; G.speed=1; G.result=null;
+  G.tip=def.tip; G.name=def.name;
+  show('game'); G.running=true; G.screen='game';
+  buildToolbar(); updateStats();
+  Audio2.init(); Audio2.apply(); Audio2.startMusic();
+  flash(def.tip, 240);
+}
+
+function sandboxDef(){
+  return { name:'Sandbox', tip:'Unlimited abilities — experiment freely!',
+    build(t){ block(t,0,470,960,70); block(t,250,300,60,170); block(t,600,360,60,110); },
+    entrance:{x:90,y:120}, exit:{x:840,y:430,w:60,h:40}, spawnDir:1,
+    hazards:[{type:'lava',x:430,y:516,w:120,h:24}],
+    spawn:100, need:0, time:999, rate:30,
+    abilities:{climber:99,floater:99,bomber:99,blocker:99,builder:99,basher:99,miner:99,digger:99} };
+}
+
+/* ---------- SPRIG FACTORY ---------- */
+function spawnSprig(){
+  G.sprigs.push({ x:G.entrance.x, y:G.entrance.y, dir:G.spawnDir, state:'fall', fall:0,
+                  climber:false, floater:false, t:0, bricks:0, fuse:0, hue:120+Math.random()*30, frame:0 });
+  G.spawned++;
+}
+
+function particles(x,y,n,col,spread){
+  for(let i=0;i<n;i++) G.parts.push({x,y,vx:(Math.random()-.5)*(spread||3),vy:-Math.random()*3-1,life:1,col});
+}
+
+/* ---------- ABILITY ASSIGNMENT ---------- */
+function assignAt(px,py){
+  if(!G.selected) return;
+  if((G.abilities[G.selected]||0)<=0) return;
+  // find nearest assignable sprig
+  let best=null, bd=22*22;
+  for(const s of G.sprigs){
+    if(s.state==='exit'||s.state==='dead') continue;
+    const dx=s.x-px, dy=(s.y-BH/2)-py, d=dx*dx+dy*dy;
+    if(d<bd){ bd=d; best=s; }
+  }
+  if(!best) return;
+  const a=G.selected;
+  // some abilities are permanent traits, others switch the active state
+  if(a==='climber'){ if(best.climber) return; best.climber=true; }
+  else if(a==='floater'){ if(best.floater) return; best.floater=true; }
+  else if(a==='bomber'){ if(best.state==='bomb') return; best.state='bomb'; best.fuse=BOMB_FUSE; }
+  else if(a==='blocker'){ if(best.state==='block') return; best.state='block'; G.blockers++; }
+  else if(a==='builder'){ best.state='build'; best.bricks=BUILD_BRICKS; best.t=0; }
+  else if(a==='basher'){ best.state='bash'; best.t=0; }
+  else if(a==='miner'){ best.state='mine'; best.t=0; }
+  else if(a==='digger'){ best.state='dig'; best.t=0; }
+  if(!G.sandbox) G.abilities[a]--;
+  Audio2.sfx.assign();
+  buildToolbar(); updateStats();
+}
+
+/* ---------- SIMULATION ---------- */
+function step(dt){
+  if(!G.running||G.paused||G.result) return;
+  G.frame++;
+  G.animClock += dt;
+  // countdown timer (real seconds)
+  G.time -= dt;
+  if(G.time<=0){ G.time=0; endLevel(); return; }
+  // spawn sprigs
+  if(G.spawned < G.total){
+    G.spawnTimer++;
+    if(G.spawnTimer>=G.spawnRate){ G.spawnTimer=0; spawnSprig(); }
+  }
+  // update sprigs
+  for(const s of G.sprigs){ if(s.state!=='dead'&&s.state!=='exit') updateSprig(s); }
+  // exit check
+  for(const s of G.sprigs){
+    if(s.state==='dead'||s.state==='exit') continue;
+    const e=G.exit;
+    if(s.x>e.x && s.x<e.x+e.w && s.y>e.y && s.y<e.y+e.h){
+      s.state='exit'; G.saved++; Audio2.sfx.save(); particles(s.x,s.y,10,'#6cff9e',3);
+    }
+  }
+  // remove resolved sprigs
+  if(G.frame%4===0) G.sprigs = G.sprigs.filter(s=>s.state!=='dead'&&s.state!=='exit');
+  // particles
+  for(const p of G.parts){ p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.life-=dt*1.4; }
+  G.parts = G.parts.filter(p=>p.life>0);
+  updateStats();
+  // win/lose when everyone is resolved
+  if(G.spawned>=G.total){
+    const alive = G.sprigs.some(s=>s.state!=='dead'&&s.state!=='exit');
+    if(!alive) endLevel();
+  }
+}
+
+function killSprig(s, splat){
+  if(s.state==='dead') return;
+  s.state='dead'; G.dead++;
+  if(splat){ Audio2.sfx.splat(); particles(s.x,s.y,8,'#ff6b81',2); }
+}
+
+function hazardHit(s){
+  for(const h of G.hazards){
+    if(s.x>h.x && s.x<h.x+h.w && s.y>h.y-2 && s.y<h.y+h.h){
+      particles(s.x,s.y,10, h.type==='lava'?'#ff8a3c':'#46e6ff',2);
+      Audio2.sfx.splat(); s.state='dead'; G.dead++; return true;
+    }
+  }
+  if(s.y>H){ s.state='dead'; G.dead++; return true; }   // fell off the bottom
+  return false;
+}
+
+function updateSprig(s){
+  s.t++; s.frame=(s.frame+1);
+  if(hazardHit(s)) return;
+
+  switch(s.state){
+    case 'fall': {
+      const sp = s.floater ? FLOAT_STEP : FALL_STEP;
+      s.y += sp; s.fall += sp;
+      if(solid(s.x, s.y+1)){
+        if(s.fall>MAX_FALL && !s.floater){ killSprig(s,true); }
+        else { s.state='walk'; s.fall=0; }
+      }
+      break;
+    }
+    case 'walk': {
+      if(!solid(s.x, s.y+1)){ s.state='fall'; s.fall=0; break; }
+      const nx = s.x + s.dir;
+      // blockers act as walls
+      if(isBlocked(nx, s.y, s)){ s.dir=-s.dir; break; }
+      // how tall is the obstacle directly ahead?
+      let rise=0; while(rise<=STEP_UP+1 && solid(nx, s.y-rise)) rise++;
+      if(rise>STEP_UP){
+        if(s.climber){ s.state='climb'; }
+        else s.dir=-s.dir;
+      } else {
+        s.x=nx; s.y-=rise;
+        // settle down small drops
+        let drop=0; while(drop<=STEP_DOWN && !solid(s.x,s.y+1)){ s.y++; drop++; }
+        if(!solid(s.x,s.y+1)){ s.state='fall'; s.fall=0; }
+      }
+      break;
+    }
+    case 'climb': {
+      // climb the wall on the side we're facing
+      if(!solid(s.x+s.dir, s.y-BH+1)){ // wall ended near head -> mount the top
+        s.y-=1; s.x+=s.dir; s.state='walk'; break;
+      }
+      if(solid(s.x, s.y-BH)){ // bumped a ceiling -> let go, turn, fall
+        s.dir=-s.dir; s.x+=s.dir; s.state='fall'; s.fall=0; break;
+      }
+      s.y-=CLIMB_STEP;
+      break;
+    }
+    case 'build': {
+      if(!solid(s.x,s.y+1) && !solid(s.x+s.dir, s.y)){ /* allow building over gaps */ }
+      if(s.t%7===0){
+        if(solid(s.x+s.dir*2, s.y-BH)){ s.state='walk'; s.dir=-s.dir; break; } // wall ahead
+        for(let i=0;i<7;i++) setPx(s.x + s.dir*i, s.y, BRICK_COL);
+        s.x += s.dir*2; s.y -= 1; s.bricks--;
+        Audio2.sfx.build();
+        if(s.bricks<=0){ s.state='walk'; }
+      }
+      break;
+    }
+    case 'bash': {
+      if(!solid(s.x,s.y+1)){ s.state='fall'; s.fall=0; break; }
+      // is there still wall ahead?
+      let wall=false; for(let j=0;j<BH;j++) if(solid(s.x+s.dir*3, s.y-j)) wall=true;
+      if(!wall){ s.state='walk'; break; }
+      if(s.t%3===0){
+        const x0 = s.dir>0 ? s.x : s.x-9;
+        clearRect(x0, s.y-BH, 9, BH+1);
+        s.x += s.dir*2; Audio2.sfx.dig();
+      }
+      break;
+    }
+    case 'mine': {
+      let wall=false; for(let j=0;j<BH;j++) if(solid(s.x+s.dir*3, s.y-j)) wall=true;
+      if(!wall && !solid(s.x,s.y+1)){ s.state='fall'; s.fall=0; break; }
+      if(s.t%3===0){
+        const x0 = s.dir>0 ? s.x : s.x-9;
+        clearRect(x0, s.y-BH, 10, BH+3);
+        s.x += s.dir*2; s.y += 2; Audio2.sfx.dig();
+      }
+      break;
+    }
+    case 'dig': {
+      if(!solid(s.x, s.y+1)){ s.state='fall'; s.fall=0; break; }
+      if(s.t%3===0){ clearRect(s.x-5, s.y+1, 10, 3); s.y += 2; Audio2.sfx.dig(); }
+      break;
+    }
+    case 'block': {
+      if(!solid(s.x, s.y+1)){ s.state='fall'; s.fall=0; G.blockers=Math.max(0,G.blockers-1); } // floor removed
+      break;
+    }
+    case 'bomb': {
+      if(solid(s.x,s.y+1)){ /* grounded */ } else { s.y+=FALL_STEP; }
+      s.fuse -= 1/60;
+      if(s.fuse<=0){
+        clearCircle(s.x, s.y-4, 17);
+        particles(s.x, s.y-4, 26, '#ffb24a', 5);
+        Audio2.sfx.explode();
+        killSprig(s,false);
+      }
+      break;
+    }
+  }
+}
+
+function isBlocked(nx, y, self){
+  for(const b of G.sprigs){
+    if(b===self || b.state!=='block') continue;
+    if(Math.abs(b.x-nx)<=4 && Math.abs(b.y-y)<12) return true;
+  }
+  return false;
+}
+
+function endLevel(){
+  if(G.result) return;
+  G.running=false;
+  const pct = G.total? Math.round(G.saved/G.total*100) : 100;
+  const won = G.sandbox ? true : (pct >= G.target);
+  G.result = won?'win':'lose';
+  Audio2.stopMusic();
+  if(won) Audio2.sfx.win(); else Audio2.sfx.lose();
+  // score: saved sprigs + time bonus + difficulty
+  const score = G.saved*100 + Math.floor(G.time)*5 + (won?G.level*250:0);
+  if(won && !G.sandbox){
+    if(G.level+1 > (save.unlocked-1) && G.level+1 < LEVELS.length) save.unlocked = G.level+2;
+    const key = 'L'+G.level;
+    if(!save.best[key] || score>save.best[key]) save.best[key]=score;
+    save.totalScore = Object.values(save.best).reduce((a,b)=>a+b,0);
+    writeSave(save);
+    // submit best total score to the shared leaderboard
+    if(window.Leaderboard && Leaderboard.getName()) Leaderboard.submit(save.totalScore);
+  }
+  const t=document.getElementById('endTitle'), txt=document.getElementById('endText');
+  if(G.sandbox){ t.textContent='Sandbox'; txt.textContent='Saved '+G.saved+' sprigs. Tinker away!'; }
+  else if(won){ t.textContent='Level Cleared! 🎉'; t.style.color='var(--accent)';
+    txt.textContent=`You saved ${pct}% (needed ${G.target}%). Score +${score}.`; }
+  else { t.textContent='Not enough saved'; t.style.color='var(--warn)';
+    txt.textContent=`Only ${pct}% reached the exit — you needed ${G.target}%. Try again!`; }
+  document.getElementById('endNext').classList.toggle('hidden', !won || G.sandbox || G.level>=LEVELS.length-1);
+  show('end');
+}
+
+/* ---------- RENDERING ---------- */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  drawBackground();
+  // terrain
+  ctx.drawImage(tcan,0,0);
+  // hazards (animated, drawn on top of their carved channels)
+  for(const h of G.hazards) drawHazard(h);
+  // entrance + exit
+  if(G.entrance) drawEntrance(G.entrance);
+  if(G.exit) drawExit(G.exit);
+  // sprigs
+  for(const s of G.sprigs) drawSprig(s);
+  // particles
+  for(const p of G.parts){ ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.col; ctx.fillRect(p.x|0,p.y|0,3,3); }
+  ctx.globalAlpha=1;
+}
+
+let bgStars=null;
+function drawBackground(){
+  // parallax: gradient sky + slow-moving distant hills/stars
+  const grd=ctx.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,'#10183a'); grd.addColorStop(1,'#1b2a55'); ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+  if(!bgStars){ bgStars=[]; for(let i=0;i<60;i++) bgStars.push({x:Math.random()*W,y:Math.random()*H*0.7,s:Math.random()*2+1}); }
+  const off=(G.animClock*8)%W;
+  ctx.fillStyle='rgba(255,255,255,.5)';
+  for(const st of bgStars){ let x=(st.x-off*0.2); if(x<0)x+=W; ctx.fillRect(x,st.y,st.s,st.s); }
+  // distant hills (parallax)
+  ctx.fillStyle='rgba(40,70,120,.5)';
+  for(let i=0;i<5;i++){ const hx=((i*260)-off*0.4)%(W+260)-130; ctx.beginPath(); ctx.arc(hx+130,H*0.75,150,Math.PI,0); ctx.fill(); }
+}
+
+function drawHazard(h){
+  const t=G.animClock;
+  if(h.type==='water'){
+    ctx.fillStyle='rgba(60,150,230,.7)'; ctx.fillRect(h.x,h.y,h.w,h.h);
+    ctx.strokeStyle='rgba(150,220,255,.8)'; ctx.lineWidth=2; ctx.beginPath();
+    for(let x=0;x<=h.w;x+=6){ const y=h.y+Math.sin((x*0.15)+t*3)*2; x===0?ctx.moveTo(h.x+x,y):ctx.lineTo(h.x+x,y); } ctx.stroke();
+  } else {
+    ctx.fillStyle='#c43a18'; ctx.fillRect(h.x,h.y,h.w,h.h);
+    for(let x=0;x<h.w;x+=10){ const b=(Math.sin(x+t*4)+1)/2; ctx.fillStyle=`rgba(255,${140+b*80|0},40,.9)`; ctx.fillRect(h.x+x,h.y+Math.sin(x+t*5)*2,7,4); }
+  }
+}
+
+function drawEntrance(e){
+  ctx.fillStyle='#7a4ad6'; ctx.fillRect(e.x-18,e.y-26,36,20);
+  ctx.fillStyle='#b98cff'; ctx.fillRect(e.x-14,e.y-22,28,8);
+  ctx.fillStyle='#2a1740'; ctx.fillRect(e.x-6,e.y-6,12,8);
+}
+function drawExit(e){
+  const t=G.animClock;
+  ctx.fillStyle='#1d6b3a'; ctx.fillRect(e.x,e.y,e.w,e.h);
+  ctx.fillStyle=`rgba(108,255,158,${0.5+Math.sin(t*4)*0.3})`; ctx.fillRect(e.x+6,e.y-14,e.w-12,e.h+14);
+  ctx.fillStyle='#eafff0'; ctx.font='bold 13px system-ui'; ctx.textAlign='center'; ctx.fillText('EXIT',e.x+e.w/2,e.y+e.h-10);
+}
+
+function drawSprig(s){
+  const x=s.x|0, y=s.y|0;
+  ctx.save(); ctx.translate(x,y);
+  const body=`hsl(${s.hue},65%,55%)`, dark=`hsl(${s.hue},65%,38%)`;
+  // body
+  ctx.fillStyle=body; ctx.fillRect(-3,-BH,6,BH);
+  ctx.fillStyle=dark; ctx.fillRect(-3,-2,6,2);
+  // a little leaf on top
+  ctx.fillStyle='#9be86a'; ctx.fillRect(-1,-BH-2,2,2);
+  // eyes (face walking direction)
+  ctx.fillStyle='#fff'; ctx.fillRect(s.dir>0?0:-2,-BH+2,2,2);
+  // legs animation
+  const legs=(s.frame>>2)&1;
+  ctx.fillStyle=dark; ctx.fillRect(-3,-1,2,1+legs); ctx.fillRect(1,-1,2,2-legs);
+
+  if(s.state==='float'|| (s.floater && s.state==='fall')){ ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.arc(0,-BH-6,8,Math.PI,0); ctx.fill(); ctx.strokeStyle='#ffd24a'; ctx.beginPath(); ctx.moveTo(-7,-BH-6);ctx.lineTo(-2,-BH);ctx.moveTo(7,-BH-6);ctx.lineTo(2,-BH);ctx.stroke(); }
+  if(s.climber && s.state==='climb'){ ctx.fillStyle='#fff'; ctx.fillRect(s.dir>0?2:-4,-BH+1,2,2); }
+  if(s.state==='block'){ ctx.fillStyle='#ff6b81'; ctx.fillRect(-5,-BH+1,2,BH); ctx.fillRect(3,-BH+1,2,BH); }
+  if(s.state==='build'){ ctx.fillStyle=BRICK_COL; ctx.fillRect(s.dir>0?3:-6,-1,3,2); }
+  if(s.state==='bash'||s.state==='mine'){ ctx.fillStyle='#cfd8ee'; ctx.fillRect(s.dir>0?3:-5,-BH+3,2,3); }
+  if(s.state==='dig'){ ctx.fillStyle='#cfd8ee'; ctx.fillRect(-1,0,2,3); }
+  if(s.state==='bomb'){ ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui'; ctx.textAlign='center'; ctx.fillText(Math.ceil(s.fuse),0,-BH-4); }
+  ctx.restore();
+}
+
+/* ---------- HUD ---------- */
+function buildToolbar(){
+  const tb=document.getElementById('toolbar'); tb.innerHTML='';
+  ABIL.forEach(a=>{
+    const n=G.abilities[a]||0;
+    const d=document.createElement('div');
+    d.className='tool'+(G.selected===a?' sel':'')+(n<=0?' empty':'');
+    d.innerHTML=`<span class="ic">${ICON[a]}</span>${a}<span class="ct">${G.sandbox?'∞':n}</span>`;
+    d.onclick=()=>{ if(n<=0&&!G.sandbox) return; G.selected=(G.selected===a?null:a); Audio2.sfx.click(); buildToolbar(); };
+    tb.appendChild(d);
+  });
+  // control buttons
+  const mk=(label,fn)=>{ const d=document.createElement('div'); d.className='tool ctrl'; d.innerHTML=label; d.onclick=fn; tb.appendChild(d); };
+  mk(`<span class="ic">${G.paused?'▶':'⏸'}</span>${G.paused?'play':'pause'}`, ()=>{ G.paused=!G.paused; buildToolbar(); });
+  mk(`<span class="ic">⏩</span>${G.speed>1?'x'+G.speed:'speed'}`, ()=>{ G.speed = G.speed>=3?1:G.speed+1; buildToolbar(); });
+  mk(`<span class="ic">↺</span>restart`, ()=>{ startLevel(G.level, G.sandbox); });
+  mk(`<span class="ic">≡</span>menu`, ()=>{ G.running=false; Audio2.stopMusic(); show('select'); });
+}
+function updateStats(){
+  const out = G.spawned - G.saved - G.dead;
+  document.getElementById('stats').innerHTML =
+    `<span>${G.name||'Sandbox'}</span>`+
+    `<span>⏱ <b>${Math.ceil(G.time)}s</b></span>`+
+    `<span>🌱 out <b>${out}</b></span>`+
+    `<span>🏁 saved <b>${G.saved}</b>/${G.total}</span>`+
+    (G.sandbox?'':`<span>🎯 need <b>${G.target}%</b></span>`)+
+    `<span>⭐ score <b>${(save.totalScore||0)}</b></span>`;
+}
+function flash(t,frames){ const m=document.getElementById('msg'); m.textContent=t; m._f=frames||180; }
+function tickMsg(){ const m=document.getElementById('msg'); if(m._f>0){ m._f--; if(m._f<=0) m.textContent=''; } }
+
+/* ---------- SCREENS ---------- */
+function show(scr){
+  G.screen=scr;
+  ['menu','select','settings','end','lb'].forEach(s=>{
+    document.getElementById('scr-'+s).classList.toggle('hidden', s!==scr);
+  });
+  document.getElementById('hud').style.display = (scr==='game') ? 'block' : 'none';
+  if(scr==='select') buildLevelGrid();
+}
+function buildLevelGrid(){
+  const g=document.getElementById('lvlgrid'); g.innerHTML='';
+  LEVELS.forEach((lv,i)=>{
+    const locked = (i+1) > save.unlocked;
+    const d=document.createElement('div'); d.className='lvlcard'+(locked?' locked':'');
+    const best=save.best['L'+i];
+    d.innerHTML=`<b>${locked?'🔒 ':''}${lv.name}</b><small>need ${lv.need}% · ${lv.spawn} sprigs${best?' · best '+best:''}</small>`;
+    if(!locked) d.onclick=()=>{ Audio2.init(); startLevel(i,false); };
+    g.appendChild(d);
+  });
+}
+
+/* ---------- INPUT ---------- */
+canvas.addEventListener('pointerdown', e=>{
+  if(G.screen!=='game'||G.paused||G.result) return;
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(W/r.width), y=(e.clientY-r.top)*(H/r.height);
+  assignAt(x,y);
+});
+document.querySelectorAll('[data-go]').forEach(b=> b.onclick=()=>{ Audio2.init(); Audio2.sfx.click(); const g=b.dataset.go;
+  if(g==='sandbox'){ startLevel(0,true); } else show(g); });
+document.getElementById('endRetry').onclick=()=>startLevel(G.level,G.sandbox);
+document.getElementById('endNext').onclick=()=>startLevel(Math.min(G.level+1,LEVELS.length-1),false);
+document.getElementById('lbBtn').onclick=()=>{ show('lb'); if(window.Leaderboard) Leaderboard.refresh(); };
+addEventListener('keydown',e=>{ if(G.screen!=='game')return;
+  if(e.key==='p'||e.key===' '){ e.preventDefault(); G.paused=!G.paused; buildToolbar(); }
+  if(e.key==='r'){ startLevel(G.level,G.sandbox); }
+});
+
+// settings controls
+const vM=document.getElementById('volMusic'), vS=document.getElementById('volSfx'), mB=document.getElementById('muteBox');
+vM.value=save.settings.music; vS.value=save.settings.sfx; mB.checked=save.settings.mute;
+function saveSettings(){ save.settings={music:+vM.value,sfx:+vS.value,mute:mB.checked}; writeSave(save);
+  Audio2.state.music=vM.value/100; Audio2.state.sfx=vS.value/100; Audio2.state.mute=mB.checked; Audio2.apply(); }
+vM.oninput=saveSettings; vS.oninput=saveSettings; mB.onchange=saveSettings;
+
+/* ---------- MAIN LOOP ---------- */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(G.screen==='game' && G.running){
+    const reps = G.paused?0:G.speed;
+    for(let i=0;i<reps;i++) step(1/60);
+    draw(); tickMsg();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// leaderboard mount (shared GH Games board)
+if(window.Leaderboard) Leaderboard.mount({el:'lb', game:'sprig-rescue', dir:'desc', unit:'pts', max:1000000, title:'Sprig Rescue — total score'});
+
+// expose a tiny hook for headless testing
+window.__sr = { G, step, draw, startLevel, assignAt, LEVELS };
+show('menu');
+</script>
+</body>
+</html>
