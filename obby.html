@@ -42,7 +42,9 @@ button{background:#26304a;border:1px solid #3a4a70;color:#eef1f8;border-radius:8
   <button id="bR" aria-label="move right">▶</button>
 </div>
 <div class="ad">AD SLOT — paste ad network code here</div>
+<div id="lb"></div>
 </div>
+<script src="leaderboard.js"></script>
 <script>
 const cv=document.getElementById('c'),x=cv.getContext('2d'),W=660,H=380,KEY='obby_best';
 const stages=[
@@ -86,6 +88,7 @@ function step(){
       let m='🏆 You beat the obby in '+elapsed.toFixed(1)+'s!';
       if(!prev||elapsed<+prev){localStorage.setItem(KEY,elapsed);$('best').textContent=elapsed.toFixed(1)+'s';m+=' NEW RECORD!';}
       $('msg').textContent=m;
+      if(window.Leaderboard)Leaderboard.submit(elapsed);
     }
   }
 }
@@ -112,6 +115,7 @@ function hold(el,k){
 hold($('bL'),'arrowleft');
 hold($('bR'),'arrowright');
 hold($('bJ'),'arrowup');
+if(window.Leaderboard)Leaderboard.mount({el:'lb',game:'obby',dir:'asc',unit:'sec',min:2,max:600,title:'Mega Obby — fastest time'});
 load();
 (function loop(){step();draw();requestAnimationFrame(loop);})();
 </script>

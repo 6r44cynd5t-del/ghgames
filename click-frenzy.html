@@ -29,7 +29,9 @@ button.btn{background:#26304a;border:1px solid #3a4a70;color:#eef1f8;border-radi
 <div class="muted" id="hi">best: 0</div>
 <div id="medal"></div>
 <button class="btn" id="r" style="display:none;margin-top:12px">↺ play again</button>
+<div id="lb"></div>
 <div class="ad">AD SLOT — paste ad network code here</div>
+<script src="leaderboard.js"></script>
 <script>
 const KEY='frenzy_best';
 let n,t,iv,hi=+(localStorage.getItem(KEY)||0);
@@ -44,10 +46,12 @@ b.onclick=()=>{
       if(n>hi){hi=n;localStorage.setItem(KEY,hi);$('hi').textContent='best: '+hi+' ✨ NEW RECORD';}
       $('s').textContent='final: '+n+' clicks ('+cps.toFixed(1)+'/sec)';
       $('medal').textContent=medal(cps);
-      $('r').style.display='inline-block';}},1000);}
+      $('r').style.display='inline-block';
+      if(window.Leaderboard)Leaderboard.submit(n);}},1000);}
   if(t){n++;$('s').textContent='score: '+n;}
 };
 $('r').onclick=reset;reset();
+if(window.Leaderboard)Leaderboard.mount({el:'lb',game:'click-frenzy',dir:'desc',unit:'clicks',max:500,title:'Click Frenzy'});
 </script>
 </body>
 </html>

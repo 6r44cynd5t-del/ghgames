@@ -69,9 +69,12 @@ input{background:#10141f;border:1px solid #2a3650;color:#eef1f8;border-radius:8p
     <div class="ups" id="ups"></div>
   </div>
 </div>
+<div style="text-align:center;margin-top:10px"><button class="btn" id="post">🏆 Post my score to the leaderboard</button></div>
+<div id="lb"></div>
 </div>
 <div id="toast"></div>
 </div>
+<script src="leaderboard.js"></script>
 <script>
 const UP=[
 {n:'Sharper axe',e:'🪓',base:10,add:1},
@@ -150,6 +153,14 @@ $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('setname').click(
 $('newg').onclick=()=>{if(confirm('Wipe ALL progress?')){localStorage.removeItem(KEY);location.reload();}};
 const saved=localStorage.getItem(KEY);
 if(saved){try{S=JSON.parse(saved);while(S.owned.length<UP.length)S.owned.push(0);start();}catch(e){localStorage.removeItem(KEY);}}
+if(window.Leaderboard){
+  Leaderboard.mount({el:'lb',game:'log-clicker',dir:'desc',unit:'wood',title:'Log Clicker — all-time wood'});
+  $('post').onclick=()=>{
+    if(!S){toast('Start chopping first!');return;}
+    if(!Leaderboard.getName()){toast('Pick a nickname in the leaderboard below 👇');return;}
+    Leaderboard.submit(S.total);toast('🏆 Score posted to the leaderboard!');
+  };
+}
 </script>
 </body>
 </html>
