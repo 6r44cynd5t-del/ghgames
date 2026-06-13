@@ -44,7 +44,7 @@ Make a free [GitHub](https://github.com) account, then a new **public** reposito
 
 ## Adding a new game (the fun loop, forever after)
 
-1. Build the game with Claude Code / Cowork — ask for "a self-contained `index.html` game, touch-friendly for iPad."
+1. Build a self-contained `index.html` game (one file, plain HTML/JS), touch-friendly for iPad.
 2. Save it as `<name>.html` in the same folder.
 3. In the homepage `index.html`, turn the `class="card soon"` placeholder into a real tile:
    ```html
