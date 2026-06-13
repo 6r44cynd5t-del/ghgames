@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mega Obby — George's Arcade</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,sans-serif;background:#10141f;color:#eef1f8;min-height:100vh;padding:16px}
+a.back{color:#8d96ad;text-decoration:none;font-size:.85rem}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:1.6rem;margin:10px 0}
+.hud{display:flex;gap:16px;font-size:.9rem;color:#8d96ad;margin-bottom:8px;align-items:center;flex-wrap:wrap}
+.hud b{color:#eef1f8}
+canvas{width:100%;border:1px solid #2a3650;border-radius:12px;background:#161c2c;display:block}
+button{background:#26304a;border:1px solid #3a4a70;color:#eef1f8;border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit}
+.ad{background:#1a2030;border:1px dashed #2a3650;border-radius:10px;padding:24px;text-align:center;color:#5c6680;font-size:.8rem;margin:14px 0}
+.muted{font-size:.8rem;color:#8d96ad;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="index.html">← arcade</a>
+<h1>🏃 Mega Obby</h1>
+<div class="hud">
+  <span>🚩 stage <b id="stg">1</b>/3</span>
+  <span>💀 deaths <b id="dth">0</b></span>
+  <span>⏱️ time <b id="tim">0.0</b>s</span>
+  <span>🥇 best <b id="best">—</b></span>
+  <span id="msg" style="color:#7dd97b"></span>
+  <button id="rst" style="margin-left:auto">↺ restart</button>
+</div>
+<canvas id="c" width="660" height="380"></canvas>
+<div class="muted">← → / A D move · ↑ / W / space jump · R resets stage</div>
+<div class="ad">AD SLOT — paste ad network code here</div>
+</div>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d'),W=660,H=380,KEY='obby_best';
+const stages=[
+  {p:[[0,340,120,40],[170,300,90,16],[320,260,90,16],[470,300,90,16],[600,260,60,120]],lava:[[120,360,540,20]],goal:[620,210,30,50],start:[20,300]},
+  {p:[[0,340,90,40],[140,310,70,16],[250,270,60,16],[350,230,60,16],[470,270,70,16],[590,330,70,50]],lava:[[90,360,500,20]],goal:[605,280,30,50],start:[15,300]},
+  {p:[[0,340,80,40],[120,300,50,16],[210,250,50,16],[300,300,50,16],[390,250,50,16],[480,300,50,16],[580,340,80,40]],lava:[[80,360,500,20]],goal:[600,300,30,40],start:[15,300]}
+];
+let si=0,deaths=0,won=false,t0=null,elapsed=0,key={};
+const P={x:0,y:0,vx:0,vy:0,w:18,h:24,g:0};
+const $=id=>document.getElementById(id);
+const best=localStorage.getItem(KEY);if(best)$('best').textContent=(+best).toFixed(1)+'s';
+function load(){const s=stages[si];P.x=s.start[0];P.y=s.start[1];P.vx=P.vy=0;$('stg').textContent=si+1;}
+function restart(){si=0;deaths=0;won=false;t0=null;elapsed=0;$('dth').textContent=0;$('msg').textContent='';$('tim').textContent='0.0';load();}
+function die(){deaths++;$('dth').textContent=deaths;load();}
+$('rst').onclick=restart;
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();key[k]=1;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(k==='r')load();});
+addEventListener('keyup',e=>key[e.key.toLowerCase()]=0);
+function hit(a,bx,by,bw,bh){return a.x<bx+bw&&a.x+a.w>bx&&a.y<by+bh&&a.y+a.h>by}
+function step(){
+  if(won)return;
+  const s=stages[si];
+  const L=key['arrowleft']||key['a'],R=key['arrowright']||key['d'],J=key['arrowup']||key['w']||key[' '];
+  if((L||R||J)&&t0===null)t0=performance.now();
+  if(t0!==null){elapsed=(performance.now()-t0)/1000;$('tim').textContent=elapsed.toFixed(1);}
+  P.vx=(R?3.2:0)-(L?3.2:0);
+  if(J&&P.g){P.vy=-9.4;P.g=0;}
+  P.vy+=0.5;if(P.vy>12)P.vy=12;
+  P.x+=P.vx;
+  for(const [px,py,pw,ph] of s.p){if(hit(P,px,py,pw,ph)){if(P.vx>0)P.x=px-P.w;else if(P.vx<0)P.x=px+pw;}}
+  P.y+=P.vy;P.g=0;
+  for(const [px,py,pw,ph] of s.p){if(hit(P,px,py,pw,ph)){if(P.vy>0){P.y=py-P.h;P.vy=0;P.g=1;}else if(P.vy<0){P.y=py+ph;P.vy=0;}}}
+  if(P.x<0)P.x=0;if(P.x+P.w>W)P.x=W-P.w;
+  if(P.y>H+40)die();
+  for(const [lx,ly,lw,lh] of s.lava)if(hit(P,lx,ly,lw,lh))die();
+  const [gx,gy,gw,gh]=s.goal;
+  if(hit(P,gx,gy,gw,gh)){
+    if(si<stages.length-1){si++;load();}
+    else{
+      won=true;
+      const prev=localStorage.getItem(KEY);
+      let m='🏆 You beat the obby in '+elapsed.toFixed(1)+'s!';
+      if(!prev||elapsed<+prev){localStorage.setItem(KEY,elapsed);$('best').textContent=elapsed.toFixed(1)+'s';m+=' NEW RECORD!';}
+      $('msg').textContent=m;
+    }
+  }
+}
+function draw(){
+  const s=stages[si];x.clearRect(0,0,W,H);
+  x.fillStyle='#3a4a70';
+  for(const [px,py,pw,ph] of s.p)x.fillRect(px,py,pw,ph);
+  x.fillStyle='#e24b4a';
+  for(const [lx,ly,lw,lh] of s.lava)x.fillRect(lx,ly,lw,lh);
+  const [gx,gy,gw,gh]=s.goal;x.fillStyle='#efb627';x.fillRect(gx+gw/2-2,gy,4,gh);x.beginPath();x.moveTo(gx+gw/2+2,gy);x.lineTo(gx+gw,gy+8);x.lineTo(gx+gw/2+2,gy+16);x.fill();
+  x.fillStyle='#5b8cff';x.fillRect(P.x,P.y,P.w,P.h);
+}
+load();
+(function loop(){step();draw();requestAnimationFrame(loop);})();
+</script>
+</body>
+</html>

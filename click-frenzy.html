@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Click Frenzy — George's Arcade</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,sans-serif;background:#10141f;color:#eef1f8;min-height:100vh;padding:16px;text-align:center}
+a.back{color:#8d96ad;text-decoration:none;font-size:.85rem;float:left}
+h1{font-size:1.6rem;margin:14px 0}
+.big{font-size:2.4rem;font-weight:700}
+.muted{font-size:.85rem;color:#8d96ad}
+#b{font-size:1.5rem;padding:26px 54px;margin:18px 0;background:#5b8cff;border:none;border-radius:16px;color:#fff;cursor:pointer;transition:transform .05s}
+#b:active{transform:scale(.95)}
+#b:disabled{background:#26304a;cursor:default}
+button.btn{background:#26304a;border:1px solid #3a4a70;color:#eef1f8;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:inherit}
+.ad{max-width:680px;background:#1a2030;border:1px dashed #2a3650;border-radius:10px;padding:24px;color:#5c6680;font-size:.8rem;margin:20px auto}
+#medal{font-size:1.1rem;margin-top:6px;min-height:1.4em}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← arcade</a>
+<h1>⚡ Click Frenzy</h1>
+<div class="muted">time left</div>
+<div class="big" id="t">20</div>
+<button id="b">CLICK ME!</button>
+<div class="big" id="s" style="font-size:1.4rem">score: 0</div>
+<div class="muted" id="hi">best: 0</div>
+<div id="medal"></div>
+<button class="btn" id="r" style="display:none;margin-top:12px">↺ play again</button>
+<div class="ad">AD SLOT — paste ad network code here</div>
+<script>
+const KEY='frenzy_best';
+let n,t,iv,hi=+(localStorage.getItem(KEY)||0);
+const $=id=>document.getElementById(id),b=$('b');
+$('hi').textContent='best: '+hi;
+function medal(cps){return cps>=8?'🥇 LIGHTNING FINGERS!':cps>=6?'🥈 Speed demon!':cps>=4?'🥉 Quick clicker!':'🐢 Warm-up round — go again!'}
+function reset(){n=0;t=20;iv=null;b.disabled=false;b.textContent='CLICK ME!';$('t').textContent=20;$('s').textContent='score: 0';$('medal').textContent='';$('r').style.display='none';}
+b.onclick=()=>{
+  if(!iv){iv=setInterval(()=>{$('t').textContent=--t;
+    if(!t){clearInterval(iv);b.disabled=true;b.textContent='TIME!';
+      const cps=n/20;
+      if(n>hi){hi=n;localStorage.setItem(KEY,hi);$('hi').textContent='best: '+hi+' ✨ NEW RECORD';}
+      $('s').textContent='final: '+n+' clicks ('+cps.toFixed(1)+'/sec)';
+      $('medal').textContent=medal(cps);
+      $('r').style.display='inline-block';}},1000);}
+  if(t){n++;$('s').textContent='score: '+n;}
+};
+$('r').onclick=reset;reset();
+</script>
+</body>
+</html>
