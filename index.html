@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GH Games — George's Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --space-deep:#0b0720;
+    --space-mid:#1a0f3d;
+    --space-glow:#2d1a66;
+    --star-gold:#ffd24a;
+    --energy-cyan:#46e6ff;
+    --coral:#ff6b81;
+    --text:#f3eeff;
+    --text-soft:#bcaede;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Nunito',system-ui,sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(circle at 20% 15%, rgba(70,230,255,.12), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(255,107,129,.12), transparent 45%),
+      linear-gradient(160deg, var(--space-deep), var(--space-mid) 60%, var(--space-glow));
+    min-height:100%;
+    overflow-x:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  /* starfield */
+  .stars{position:fixed;inset:0;z-index:0;pointer-events:none;}
+  .stars span{
+    position:absolute;width:3px;height:3px;border-radius:50%;
+    background:#fff;opacity:.6;
+    animation:twinkle 3s infinite ease-in-out;
+  }
+  @keyframes twinkle{0%,100%{opacity:.2;transform:scale(.7);}50%{opacity:.9;transform:scale(1.2);}}
+
+  .wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:48px 20px 64px;}
+  header{text-align:center;margin-bottom:40px;}
+  .logo{
+    font-family:'Baloo 2',cursive;font-weight:800;
+    font-size:clamp(44px,9vw,76px);line-height:1;
+    background:linear-gradient(90deg,var(--star-gold),var(--energy-cyan),var(--coral));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 30px rgba(70,230,255,.25);
+  }
+  .tag{font-size:clamp(15px,3.5vw,20px);color:var(--text-soft);margin-top:10px;font-weight:700;}
+
+  .grid{
+    display:grid;gap:22px;
+    grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  }
+  .card{
+    display:flex;flex-direction:column;justify-content:flex-end;
+    text-decoration:none;color:var(--text);
+    min-height:200px;padding:22px;border-radius:26px;
+    background:linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 40px rgba(70,230,255,.05);
+    position:relative;overflow:hidden;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .card:active{transform:scale(.97);}
+  @media (hover:hover){
+    .card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.45),0 0 30px rgba(70,230,255,.25);}
+  }
+  .card .emoji{font-size:64px;line-height:1;filter:drop-shadow(0 0 14px rgba(255,210,74,.5));}
+  .card .name{font-family:'Baloo 2',cursive;font-weight:800;font-size:26px;margin-top:14px;}
+  .card .desc{font-size:14px;color:var(--text-soft);margin-top:4px;}
+
+  .card.blackhole{background:radial-gradient(circle at 50% 38%, #000 0 18%, rgba(45,26,102,.55) 55%, rgba(255,255,255,.04));}
+  .card.sparrow{background:linear-gradient(160deg, rgba(70,230,255,.18), rgba(255,255,255,.03));}
+
+  .card.soon{opacity:.6;cursor:default;border-style:dashed;}
+  .card.soon .name{color:var(--text-soft);}
+  .card.soon::after{
+    content:"COMING SOON";position:absolute;top:16px;right:-34px;
+    background:var(--coral);color:#fff;font-weight:800;font-size:11px;
+    padding:5px 40px;transform:rotate(38deg);letter-spacing:1px;
+  }
+
+  footer{text-align:center;margin-top:48px;color:var(--text-soft);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="wrap">
+  <header>
+    <div class="logo">GH GAMES</div>
+    <div class="tag">George's own arcade 🚀 made with code</div>
+  </header>
+
+  <main class="grid">
+    <a class="card blackhole" href="blackhole.html">
+      <div class="emoji">🕳️</div>
+      <div class="name">Black Hole</div>
+      <div class="desc">Fling stars and watch them get swallowed.</div>
+    </a>
+
+    <a class="card sparrow" href="sparrow.html">
+      <div class="emoji">🐦</div>
+      <div class="name">Sparrow Flyer</div>
+      <div class="desc">Tap to flap through the gaps. Beat your best!</div>
+    </a>
+
+    <div class="card soon">
+      <div class="emoji">✨</div>
+      <div class="name">Your Next Game</div>
+      <div class="desc">Build it with Claude Code and drop it here.</div>
+    </div>
+  </main>
+
+  <footer>Made by George · built with code, one game at a time</footer>
+</div>
+
+<script>
+  // sprinkle a starfield
+  const sky = document.getElementById('stars');
+  const N = 70;
+  for (let i = 0; i < N; i++) {
+    const s = document.createElement('span');
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.top = Math.random() * 100 + 'vh';
+    s.style.animationDelay = (Math.random() * 3) + 's';
+    s.style.opacity = (0.2 + Math.random() * 0.6).toFixed(2);
+    sky.appendChild(s);
+  }
+</script>
+</body>
+</html>
