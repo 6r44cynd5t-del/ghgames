@@ -85,6 +85,28 @@
   }
 
   footer{text-align:center;margin-top:48px;color:var(--text-soft);font-size:13px;}
+
+  /* leaderboards call-to-action banner */
+  .lbbar{
+    display:flex;align-items:center;gap:16px;text-decoration:none;color:var(--text);
+    margin:0 0 24px;padding:18px 22px;border-radius:22px;
+    background:linear-gradient(100deg, rgba(255,210,74,.16), rgba(70,230,255,.14));
+    border:1px solid rgba(255,210,74,.35);transition:transform .15s ease;
+  }
+  .lbbar:active{transform:scale(.99);}
+  @media (hover:hover){.lbbar:hover{transform:translateY(-3px);}}
+  .lbbar .ico{font-size:40px;filter:drop-shadow(0 0 12px rgba(255,210,74,.5));}
+  .lbbar .lt{font-family:'Baloo 2',cursive;font-weight:800;font-size:24px;display:block;}
+  .lbbar .ls{color:var(--text-soft);font-size:14px;margin-top:2px;display:block;}
+  .lbbar .go{margin-left:auto;font-weight:800;color:var(--star-gold);white-space:nowrap;}
+
+  /* "has a leaderboard" badge on game tiles */
+  .flag{
+    position:absolute;top:14px;left:14px;
+    background:rgba(255,210,74,.18);color:var(--star-gold);
+    border:1px solid rgba(255,210,74,.4);
+    font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;
+  }
 </style>
 </head>
 <body>
@@ -94,6 +116,15 @@
     <div class="logo">GH GAMES</div>
     <div class="tag">George's own arcade 🚀 made with code</div>
   </header>
+
+  <a class="lbbar" href="leaderboards.html">
+    <span class="ico">🏆</span>
+    <span>
+      <span class="lt">Leaderboards</span>
+      <span class="ls">Daily, weekly, monthly &amp; all-time — see who's on top!</span>
+    </span>
+    <span class="go">View →</span>
+  </a>
 
   <main class="grid">
     <a class="card blackhole" href="blackhole.html">
@@ -109,18 +140,21 @@
     </a>
 
     <a class="card" href="log-clicker.html">
+      <span class="flag">🏆 Leaderboard</span>
       <div class="emoji">🪵</div>
       <div class="name">Log Clicker</div>
       <div class="desc">Chop wood, buy upgrades, collect golden logs and badges.</div>
     </a>
 
     <a class="card" href="click-frenzy.html">
+      <span class="flag">🏆 Leaderboard</span>
       <div class="emoji">⚡</div>
       <div class="name">Click Frenzy</div>
       <div class="desc">How many clicks in 20 seconds? Beat your best.</div>
     </a>
 
     <a class="card" href="obby.html">
+      <span class="flag">🏆 Leaderboard</span>
       <div class="emoji">🏃</div>
       <div class="name">Mega Obby</div>
       <div class="desc">Jump across the platforms, dodge the lava, race the clock.</div>
