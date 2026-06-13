@@ -471,22 +471,23 @@ function updateSprig(s){
     }
     case 'bash': {
       if(!solid(s.x,s.y+1)){ s.state='fall'; s.fall=0; break; }
-      // is there still wall ahead?
-      let wall=false; for(let j=0;j<BH;j++) if(solid(s.x+s.dir*3, s.y-j)) wall=true;
+      // probe for wall BEYOND the strip we carve (else we'd stop after one bite)
+      let wall=false; for(let j=1;j<BH;j++) if(solid(s.x+s.dir*11, s.y-j)) wall=true;
       if(!wall){ s.state='walk'; break; }
       if(s.t%3===0){
         const x0 = s.dir>0 ? s.x : s.x-9;
-        clearRect(x0, s.y-BH, 9, BH+1);
+        clearRect(x0, s.y-BH+1, 10, BH);   // carve a body-height tunnel, keep the floor
         s.x += s.dir*2; Audio2.sfx.dig();
       }
       break;
     }
     case 'mine': {
-      let wall=false; for(let j=0;j<BH;j++) if(solid(s.x+s.dir*3, s.y-j)) wall=true;
-      if(!wall && !solid(s.x,s.y+1)){ s.state='fall'; s.fall=0; break; }
+      let wall=false; for(let j=1;j<BH;j++) if(solid(s.x+s.dir*11, s.y-j)) wall=true;
+      let ground=false; for(let k=1;k<=4;k++) if(solid(s.x, s.y+k)) ground=true;
+      if(!wall && !ground){ s.state='fall'; s.fall=0; break; }
       if(s.t%3===0){
         const x0 = s.dir>0 ? s.x : s.x-9;
-        clearRect(x0, s.y-BH, 10, BH+3);
+        clearRect(x0, s.y-BH+1, 10, BH+3);
         s.x += s.dir*2; s.y += 2; Audio2.sfx.dig();
       }
       break;
