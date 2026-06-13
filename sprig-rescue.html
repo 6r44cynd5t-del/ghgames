@@ -492,8 +492,10 @@ function updateSprig(s){
       break;
     }
     case 'dig': {
-      if(!solid(s.x, s.y+1)){ s.state='fall'; s.fall=0; break; }
-      if(s.t%3===0){ clearRect(s.x-5, s.y+1, 10, 3); s.y += 2; Audio2.sfx.dig(); }
+      // only stop digging when there's a real gap below (not the pixel we just cleared)
+      let ground=false; for(let k=1;k<=5;k++) if(solid(s.x, s.y+k)) ground=true;
+      if(!ground){ s.state='fall'; s.fall=0; break; }
+      if(s.t%4===0){ clearRect(s.x-5, s.y+1, 10, 4); s.y += 2; Audio2.sfx.dig(); }
       break;
     }
     case 'block': {
