@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Log Clicker — George's Arcade</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,sans-serif;background:#10141f;color:#eef1f8;min-height:100vh;padding:16px}
+a.back{color:#8d96ad;text-decoration:none;font-size:.85rem}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:1.6rem;margin:10px 0}
+.layout{display:grid;grid-template-columns:1fr 300px;gap:14px}
+@media(max-width:700px){.layout{grid-template-columns:1fr}.ups{max-height:none}}
+.panel{background:#1a2030;border:1px solid #2a3650;border-radius:14px;padding:16px;text-align:center}
+#log{font-size:64px;background:none;border:none;cursor:pointer;transition:transform .07s;line-height:1;padding:14px;user-select:none}
+#log:active{transform:scale(.9)}
+.big{font-size:1.9rem;font-weight:600}
+.muted{font-size:.78rem;color:#8d96ad}
+.ups{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;align-content:start}
+.up{background:#1a2030;border:1px solid #2a3650;border-radius:10px;padding:10px;color:#eef1f8;cursor:pointer;text-align:left;font-family:inherit}
+.up:hover:not(:disabled){border-color:#5b8cff}
+.up:disabled{opacity:.45;cursor:default}
+.up b{font-size:.85rem}
+.up small{display:block;color:#8d96ad;font-size:.72rem;margin-top:2px}
+button.btn{background:#26304a;border:1px solid #3a4a70;color:#eef1f8;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:inherit}
+input{background:#10141f;border:1px solid #2a3650;color:#eef1f8;border-radius:8px;padding:9px 12px;font-family:inherit}
+.float{position:fixed;pointer-events:none;font-weight:700;color:#7dd97b;animation:fl .9s forwards;z-index:5}
+@keyframes fl{to{transform:translateY(-60px);opacity:0}}
+#golden{position:fixed;font-size:54px;background:none;border:none;cursor:pointer;z-index:6;animation:wig .5s infinite alternate;filter:drop-shadow(0 0 10px gold)}
+@keyframes wig{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#26304a;border:1px solid #5b8cff;padding:10px 18px;border-radius:10px;opacity:0;transition:opacity .3s;z-index:7}
+.ad{background:#1a2030;border:1px dashed #2a3650;border-radius:10px;padding:24px;text-align:center;color:#5c6680;font-size:.8rem;margin:14px 0}
+.bar{height:6px;background:#26304a;border-radius:3px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:#5b8cff}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="index.html">← arcade</a>
+<h1>🪵 Log Clicker</h1>
+<div id="namebox" class="panel" style="max-width:380px;margin:30px auto">
+  <p style="margin-bottom:10px">Pick a lumberjack name:</p>
+  <input id="uname" maxlength="20" placeholder="username"/>
+  <button class="btn" id="setname" style="margin-left:6px">Start chopping</button>
+</div>
+<div id="game" style="display:none">
+<div class="layout">
+  <div>
+    <div class="panel">
+      <div class="muted" id="who"></div>
+      <button id="log" aria-label="chop">🪵</button>
+      <div class="muted">wood</div>
+      <div class="big" id="w">0</div>
+      <div class="muted" id="ppc">1 per click</div>
+      <div class="bar" title="progress to next achievement"><i id="prog" style="width:0%"></i></div>
+      <div class="muted" id="nextach" style="margin-top:4px"></div>
+    </div>
+    <div class="panel" style="margin-top:10px;text-align:left">
+      <div class="muted">📊 all-time wood</div><div style="font-size:1.2rem;font-weight:600" id="tw">0</div>
+      <div class="muted" style="margin-top:6px">🖱️ total clicks</div><div style="font-size:1.2rem;font-weight:600" id="tc">0</div>
+      <div class="muted" style="margin-top:6px">🏆 achievements</div><div style="font-size:1.2rem;font-weight:600" id="ac">0/10</div>
+      <div class="muted" style="margin-top:6px">🔥 daily streak</div><div style="font-size:1.2rem;font-weight:600" id="streak">1</div>
+    </div>
+    <button class="btn" id="newg" style="width:100%;margin-top:10px">↺ hard reset</button>
+  </div>
+  <div>
+    <div class="ad">AD SLOT — paste ad network code here</div>
+    <div class="ups" id="ups"></div>
+  </div>
+</div>
+</div>
+<div id="toast"></div>
+</div>
+<script>
+const UP=[
+{n:'Sharper axe',e:'🪓',base:10,add:1},
+{n:'Steel axe',e:'⚔️',base:40,add:3},
+{n:'Chainsaw',e:'🛠️',base:120,add:8},
+{n:'Lumber crew',e:'👷',base:400,add:20},
+{n:'Sawmill',e:'🏭',base:1200,add:60},
+{n:'Logging trucks',e:'🚚',base:4000,add:180},
+{n:'Timber empire',e:'🏙️',base:15000,add:600},
+{n:'Wood wizard',e:'🧙',base:60000,add:2500},
+{n:'Enchanted forest',e:'🌲',base:225000,add:10000},
+{n:'Wood golem',e:'🤖',base:800000,add:40000},
+{n:'Logger drones',e:'🛸',base:3e6,add:150000},
+{n:'Orbital sawstation',e:'🛰️',base:12e6,add:600000},
+{n:'Time-loop logger',e:'⏳',base:45e6,add:24e5},
+{n:'Planet of pines',e:'🌍',base:17e7,add:1e7},
+{n:'Galactic grove',e:'🪐',base:65e7,add:4e7},
+{n:'Infinite forest',e:'♾️',base:25e8,add:16e7}];
+const EXTRA=['Nebula nursery 🌌','Comet chopper ☄️','Star sawyer ⭐','Moon mill 🌙','Solar splitter ☀️','Asteroid arborist 🪨','Rocket loggers 🚀','Wormhole woodyard 🕳️','Dyson saw-sphere 🔆','Quantum quarry ⚛️','Antimatter axe 💥','Dark forest 🌑','Plasma pines 🔥','Crystal canopy 💎','Void violets 🟣','Gravity grove 🧲','Photon foresters 💡','Tachyon timber ⚡','Nano lumberbots 🦠','DNA dendrology 🧬','Cyber cedars 🖥️','Hologram hardwood 📽️','Dream druids 😴','Mythic maples 🦄','Dragon deforesters 🐉','Phoenix forests 🐦','Titan timberland 🗿','Celestial cedar 👼','Cosmic carpenter 🔨','Reality redwoods 🌳','Dimension drills 🌀','Multiverse mill 🎆','Eternity evergreens 🌠','Omega oak 🏆'];
+EXTRA.forEach((s,i)=>{const p=s.split(' '),e=p.pop();UP.push({n:p.join(' '),e,base:Math.round(25e8*Math.pow(3.75,i+1)),add:Math.round(16e7*Math.pow(3.9,i+1))});});
+const ACH=[10,100,1000,10000,1e5,1e6,1e7,1e8,1e9,1e10,1e12,1e14,1e16,1e18,1e20,1e22,1e24,1e26,1e28,1e30];
+const KEY='logclicker_save';
+let S=null;
+const $=id=>document.getElementById(id);
+const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+function f(n){n=Math.round(n);if(n<1e6)return n.toLocaleString();const e=Math.min(SUF.length-1,Math.floor(Math.log10(n)/3));const v=n/Math.pow(10,e*3);return(v>=100?Math.round(v):v.toFixed(1))+SUF[e];}
+const cost=u=>Math.round(UP[u].base*Math.pow(1.5,S.owned[u]));
+const per=()=>1+S.owned.reduce((s,c,i)=>s+c*UP[i].add,0);
+function fresh(u){return{user:u,wood:0,total:0,clicks:0,owned:UP.map(()=>0),ach:0,streak:1,lastDay:today(),lastSeen:Date.now()}}
+function today(){return new Date().toDateString()}
+function save(){S.lastSeen=Date.now();localStorage.setItem(KEY,JSON.stringify(S))}
+function toast(t){const e=$('toast');e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,2600)}
+function render(){
+  $('w').textContent=f(S.wood);$('tw').textContent=f(S.total);$('tc').textContent=f(S.clicks);
+  $('ppc').textContent=f(per())+' per click';$('ac').textContent=S.ach+'/'+ACH.length;$('streak').textContent=S.streak+(S.streak>1?' days':' day');
+  if(S.ach<ACH.length){const goal=ACH[S.ach];$('prog').style.width=Math.min(100,S.total/goal*100)+'%';$('nextach').textContent='next badge: '+f(goal)+' all-time wood';}
+  else{$('prog').style.width='100%';$('nextach').textContent='all badges earned!';}
+  document.querySelectorAll('.up').forEach(b=>{
+    const u=+b.dataset.u,c=cost(u);
+    b.disabled=S.wood<c;
+    b.innerHTML=`<b>${UP[u].e} ${UP[u].n} ×${S.owned[u]}</b><small>+${f(UP[u].add)}/click · costs ${f(c)}</small>`;
+  });
+}
+function checkAch(){while(S.ach<ACH.length&&S.total>=ACH[S.ach]){S.ach++;toast('🏆 Achievement! '+f(ACH[S.ach-1])+' all-time wood');}}
+function floatNum(ev,t){const d=document.createElement('div');d.className='float';d.textContent=t;d.style.left=(ev.clientX-10)+'px';d.style.top=(ev.clientY-20)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),900)}
+function start(){
+  $('namebox').style.display='none';$('game').style.display='block';
+  $('who').textContent='👤 '+S.user;
+  if(S.lastDay!==today()){
+    const yest=new Date(Date.now()-864e5).toDateString();
+    S.streak=(S.lastDay===yest)?S.streak+1:1;S.lastDay=today();
+    if(S.streak>1)toast('🔥 '+S.streak+'-day streak! Welcome back, '+S.user);
+  }
+  const away=Math.min(28800,(Date.now()-S.lastSeen)/1000);
+  if(away>120&&per()>1){const earn=Math.round(away*per()*0.1);S.wood+=earn;S.total+=earn;toast('💤 Your crew chopped '+f(earn)+' wood while you were away!');}
+  checkAch();render();save();
+  setInterval(spawnGolden,30000+Math.random()*45000);
+  setInterval(save,5000);
+}
+function spawnGolden(){
+  if($('golden'))return;
+  const b=document.createElement('button');b.id='golden';b.textContent='🪵';b.setAttribute('aria-label','golden log');
+  b.style.left=(10+Math.random()*80)+'%';b.style.top=(15+Math.random()*65)+'%';
+  b.onclick=()=>{const bonus=Math.max(50,per()*25);S.wood+=bonus;S.total+=bonus;toast('✨ GOLDEN LOG! +'+f(bonus)+' wood');b.remove();checkAch();render();save();};
+  document.body.appendChild(b);setTimeout(()=>b.remove(),6000);
+}
+$('ups').innerHTML=UP.map((u,i)=>`<button class="up" data-u="${i}"></button>`).join('');
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.up');if(!b)return;
+  const u=+b.dataset.u,c=cost(u);
+  if(S.wood>=c){S.wood-=c;S.owned[u]++;toast(UP[u].e+' Bought '+UP[u].n+'!');render();save();}
+});
+$('log').onclick=e=>{const p=per();S.wood+=p;S.total+=p;S.clicks++;floatNum(e,'+'+f(p));checkAch();render();};
+$('setname').onclick=()=>{const v=$('uname').value.trim();if(!v)return;S=fresh(v);save();start();};
+$('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('setname').click()});
+$('newg').onclick=()=>{if(confirm('Wipe ALL progress?')){localStorage.removeItem(KEY);location.reload();}};
+const saved=localStorage.getItem(KEY);
+if(saved){try{S=JSON.parse(saved);while(S.owned.length<UP.length)S.owned.push(0);start();}catch(e){localStorage.removeItem(KEY);}}
+</script>
+</body>
+</html>
