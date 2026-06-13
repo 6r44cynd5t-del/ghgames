@@ -44,6 +44,8 @@
   <div class="boards">
     <div id="lb-frenzy"></div>
     <div id="lb-obby"></div>
+    <div id="lb-blackhole"></div>
+    <div id="lb-sparrow"></div>
     <div id="lb-log"></div>
   </div>
 </div>
@@ -54,6 +56,8 @@
     Leaderboard.mountNick('nick');
     Leaderboard.mount({ el:'lb-frenzy', game:'click-frenzy', dir:'desc', unit:'clicks', showNick:false, title:'Click Frenzy' });
     Leaderboard.mount({ el:'lb-obby',   game:'obby',         dir:'asc',  unit:'sec',    showNick:false, title:'Mega Obby — fastest time' });
+    Leaderboard.mount({ el:'lb-blackhole', game:'blackhole', dir:'desc', unit:'orbits', showNick:false, title:'Black Hole — orbits in 60s' });
+    Leaderboard.mount({ el:'lb-sparrow', game:'sparrow',     dir:'desc', unit:'pts',    showNick:false, title:'Sparrow Flyer — best score' });
     Leaderboard.mount({ el:'lb-log',    game:'log-clicker',  dir:'desc', unit:'wood',   showNick:false, title:'Log Clicker — all-time wood' });
   }
 </script>

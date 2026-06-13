@@ -10,12 +10,25 @@
   .hud{position:fixed;top:12px;left:0;right:0;text-align:center;color:#bcaede;font-size:15px;pointer-events:none;text-shadow:0 1px 4px #000;}
   .back{position:fixed;top:12px;left:12px;color:#fff;text-decoration:none;background:rgba(255,255,255,.12);
         padding:8px 14px;border-radius:14px;font-weight:700;font-size:14px;backdrop-filter:blur(4px);}
+  .ctrl{position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:8;}
+  .ctrl button{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);
+        border-radius:14px;padding:9px 14px;font-weight:700;font-size:14px;cursor:pointer;backdrop-filter:blur(4px);font-family:inherit;}
+  .ctrl #startBtn{background:rgba(120,80,255,.55);border-color:#a974ff;}
+  .overlay{position:fixed;inset:0;background:rgba(6,4,15,.85);display:none;align-items:flex-start;justify-content:center;z-index:9;padding:64px 12px;overflow:auto;}
+  .overlay .sheet{position:relative;}
+  .overlay .x{position:absolute;top:-46px;right:0;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;}
 </style>
 </head>
 <body>
 <a class="back" href="index.html">← Back</a>
-<div class="hud">Drag from anywhere and let go to fling a star ✨</div>
+<div class="ctrl">
+  <button id="startBtn">▶ 60s Challenge</button>
+  <button id="lbBtn">🏆</button>
+</div>
+<div class="hud">Drag to fling stars into orbit ✨ — then try the 60-second challenge!</div>
 <canvas id="c"></canvas>
+<div id="lbov" class="overlay"><div class="sheet"><button id="lbClose" class="x">✕</button><div id="lb"></div></div></div>
+<script src="leaderboard.js"></script>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -36,9 +49,38 @@ const particles = [];  // swallow flashes
 // aim state
 let aiming = false, ax = 0, ay = 0, sx = 0, sy = 0;
 
+// 60-second orbit challenge
+let challengeActive = false, challengeEnd = 0, orbits = 0, lastResult = null;
+
 function addStar(x, y, vx, vy){
-  stars.push({x, y, vx, vy, alive:true, trail:[], hue: 40 + Math.random()*40});
+  stars.push({x, y, vx, vy, alive:true, trail:[], hue: 40 + Math.random()*40,
+              ang: Math.atan2(y - cy, x - cx), acc: 0});
 }
+
+function updateHud(){
+  const hud = document.querySelector('.hud');
+  if (challengeActive){
+    const tl = Math.max(0, Math.ceil((challengeEnd - performance.now())/1000));
+    hud.innerHTML = '⏱️ ' + tl + 's &nbsp;·&nbsp; 🌀 ' + orbits + ' orbits';
+  } else if (lastResult != null){
+    hud.innerHTML = '🌀 ' + lastResult + ' orbits! Tap ▶ to try again';
+  } else {
+    hud.textContent = 'Drag to fling stars into orbit ✨ — then try the 60-second challenge!';
+  }
+}
+function startChallenge(){
+  stars.length = 0; particles.length = 0;
+  orbits = 0; lastResult = null; challengeActive = true;
+  challengeEnd = performance.now() + 60000;
+  closeLb(); updateHud();
+}
+function endChallenge(){
+  challengeActive = false; lastResult = orbits;
+  if (window.Leaderboard){ Leaderboard.submit(orbits); openLb(); }
+  updateHud();
+}
+function openLb(){ document.getElementById('lbov').style.display = 'flex'; if (window.Leaderboard) Leaderboard.refresh(); }
+function closeLb(){ document.getElementById('lbov').style.display = 'none'; }
 
 function pointer(e){
   const t = e.touches ? e.touches[0] : e;
@@ -71,6 +113,7 @@ function swallow(x, y){
 let last = performance.now();
 function loop(now){
   const dt = Math.min(0.033, (now - last)/1000); last = now;
+  if (challengeActive && now >= challengeEnd) endChallenge();
   // background fade for trails
   ctx.fillStyle = 'rgba(6,4,15,0.28)';
   ctx.fillRect(0,0,W,H);
@@ -96,6 +139,14 @@ function loop(now){
     st.vy += (dy/d) * a * dt * 60;
     st.x += st.vx * dt;
     st.y += st.vy * dt;
+    if(challengeActive){
+      const na = Math.atan2(st.y - cy, st.x - cx);
+      let dA = na - st.ang;
+      if(dA > Math.PI) dA -= 2*Math.PI; else if(dA < -Math.PI) dA += 2*Math.PI;
+      st.acc += dA; st.ang = na;
+      while(st.acc >= 2*Math.PI){ orbits++; st.acc -= 2*Math.PI; }
+      while(st.acc <= -2*Math.PI){ orbits++; st.acc += 2*Math.PI; }
+    }
     st.trail.push({x:st.x, y:st.y});
     if(st.trail.length > 18) st.trail.shift();
     if(d < HOLE_R + 4){ st.alive = false; swallow(st.x, st.y); }
@@ -130,9 +181,15 @@ function loop(now){
   // tidy dead stars occasionally
   if(stars.length > 60){ for(let i=stars.length-1;i>=0;i--){ if(!stars[i].alive){ stars.splice(i,1);} } }
 
+  updateHud();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+document.getElementById('startBtn').onclick = startChallenge;
+document.getElementById('lbBtn').onclick = openLb;
+document.getElementById('lbClose').onclick = closeLb;
+if(window.Leaderboard) Leaderboard.mount({el:'lb', game:'blackhole', dir:'desc', unit:'orbits', max:5000, title:'Black Hole — orbits in 60s'});
 </script>
 </body>
 </html>

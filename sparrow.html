@@ -9,11 +9,19 @@
   canvas{display:block;touch-action:none;margin:0 auto;background:linear-gradient(#9fe0ff,#dff4ff);}
   .back{position:fixed;top:12px;left:12px;color:#0b4a6b;text-decoration:none;background:rgba(255,255,255,.7);
         padding:8px 14px;border-radius:14px;font-weight:700;font-size:14px;z-index:2;}
+  .ctrl{position:fixed;top:12px;right:12px;z-index:3;}
+  .ctrl button{background:rgba(255,255,255,.7);color:#0b4a6b;border:none;border-radius:14px;padding:9px 14px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;}
+  .overlay{position:fixed;inset:0;background:rgba(11,74,107,.88);display:none;align-items:flex-start;justify-content:center;z-index:5;padding:64px 12px;overflow:auto;}
+  .overlay .sheet{position:relative;}
+  .overlay .x{position:absolute;top:-46px;right:0;background:rgba(255,255,255,.25);color:#fff;border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;}
 </style>
 </head>
 <body>
 <a class="back" href="index.html">← Back</a>
+<div class="ctrl"><button id="lbBtn">🏆</button></div>
 <canvas id="c"></canvas>
+<div id="lbov" class="overlay"><div class="sheet"><button id="lbClose" class="x">✕</button><div id="lb"></div></div></div>
+<script src="leaderboard.js"></script>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -144,9 +152,15 @@ function die(){
   if(state==='dead') return;
   state = 'dead';
   if(score > best) best = score;
+  if(window.Leaderboard){ Leaderboard.submit(score); openLb(); }
 }
+function openLb(){ document.getElementById('lbov').style.display='flex'; if(window.Leaderboard) Leaderboard.refresh(); }
+function closeLb(){ document.getElementById('lbov').style.display='none'; }
 reset();
 requestAnimationFrame(loop);
+document.getElementById('lbBtn').onclick = openLb;
+document.getElementById('lbClose').onclick = closeLb;
+if(window.Leaderboard) Leaderboard.mount({el:'lb', game:'sparrow', dir:'desc', unit:'pts', max:100000, title:'Sparrow Flyer — best score'});
 </script>
 </body>
 </html>
