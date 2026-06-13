@@ -473,7 +473,9 @@ function updateSprig(s){
       if(!solid(s.x,s.y+1)){ s.state='fall'; s.fall=0; break; }
       // probe for wall BEYOND the strip we carve (else we'd stop after one bite)
       let wall=false; for(let j=1;j<BH;j++) if(solid(s.x+s.dir*11, s.y-j)) wall=true;
-      if(!wall){ s.state='walk'; break; }
+      if(!wall){ // broke through — final sweep so no thin sliver blocks the crowd
+        const xf = s.dir>0 ? s.x : s.x-16; clearRect(xf, s.y-BH+1, 17, BH);
+        s.state='walk'; break; }
       if(s.t%3===0){
         const x0 = s.dir>0 ? s.x : s.x-9;
         clearRect(x0, s.y-BH+1, 10, BH);   // carve a body-height tunnel, keep the floor
